@@ -16,7 +16,7 @@ Automatically create a schedule of interviews based on certain parameters:
 
 #C. Input
 
-Input files are two files:
+Input files are two files:  
 1. Professor schedule/availability
 2. Student preference
 
@@ -31,7 +31,9 @@ Input files are two files:
 
 #E. Formatting
 
-1. Professor schedule format: `FIRSTNAME LASTNAME<TAB>VALUE<TAB>VALUE<TAB>`
+**1. Professor schedule format:**  
+
+`FIRSTNAME LASTNAME<TAB>VALUE<TAB>VALUE<TAB>`
 
 ```
 Professor name1 OK      OK      OK      OK      OK      OK              OK
@@ -43,7 +45,9 @@ Explanation:
 OK means he/she is available  
 No value (<TAB><TAB>) means he/she is not available at that timeslot
 
-2. Student preference format: `FIRSTNAME LASTNAME<TAB>FIRSTNAME LASTNAME<TAB>FIRSTNAME LASTNAME`
+**2. Student preference format:**  
+
+`FIRSTNAME LASTNAME<TAB>FIRSTNAME LASTNAME<TAB>FIRSTNAME LASTNAME`
 
 ```
 Student name1   Professor name1 Professor name2 !Professor name3
@@ -63,9 +67,11 @@ If a professor request to meet a student, put an exclamation mark \"!\" in front
 
 #F. Example
 
+```
 bin/1_Process_Input.pl -a -b -p Data/Example/Prof.xls -s Data/Example/Stud.xls -n Example
 bin/2_Scheduler.pl -d Result/Example/ -g 100 -p 100 -s 0.1
-Best schedule output is at Result/Example/best_schedule.txt
+#Best schedule output is at Result/Example/best_schedule.txt
+```
 
 #G Advanced
 
@@ -75,8 +81,8 @@ Best schedule output is at Result/Example/best_schedule.txt
 2. Edit bin/professor_buildings.txt
 3. Add building, lowercase first character of first name and last name, then complete name
 
-Example:
-Building	jdoe	John Doe
+Example:   
+`Building	jdoe	John Doe`
 
 ##To add/remove building GPS location:  
 
@@ -84,5 +90,5 @@ Building	jdoe	John Doe
 2. Edit gpscoords.txt and add building, longitute, and latitude in tab separate format
 3. Run gpsmatrix.pl with gpscoords.txt as input to produce distcoords.txt
 
-Example:
-Building	-121.00124	38.235
+Example:  
+`Building	-121.00124	38.235`
