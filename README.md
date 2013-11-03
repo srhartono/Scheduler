@@ -1,18 +1,17 @@
 #Interview Scheduler ver 0.5b
 
-#A. Authors
-Stella Hartono (srhartono@ucdavis.edu)
-Linda Su-Feher (lsu@ucdavis.edu)
-Ravi Dandekar (rdandekar@ucdavis.edu)
+#A. Authors   
+1. Stella Hartono (srhartono@ucdavis.edu)
+2. Linda Su-Feher (lsu@ucdavis.edu)
+3. Ravi Dandekar (rdandekar@ucdavis.edu)
 
 #B. Function
 
 Automatically create a schedule of interviews based on certain parameters:
 - professor preferences to student
-- professor availabilities
 - student preferences to professor
+- professor availabilities
 - distance between interview locations
-
 
 #C. Input
 
@@ -57,7 +56,7 @@ Student name3   Professor name5 Professor name2 Professor name3
 
 Explanation:  
 Professor name should be ordered by the student's desire to meet. For example at above, Student_name1 want to meet Professor_name1 the most.  
-If a professor request to meet a student, put an exclamation mark \"!\" in front of the professor's name. For example at above, rofessor_name3 wants to meet Student_name1.
+If a professor request to meet a student, put an exclamation mark "!" in front of the professor's name. For example at above, professor_name3 wants to meet Student_name1.
 
 #D. How to install:  
 1. Install github (www.github.com)
