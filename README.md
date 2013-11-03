@@ -1,11 +1,11 @@
-#Interview Scheduler ver 0.5b
+##Interview Scheduler ver 0.5b
 
-#A. Authors   
+##A. Authors   
 1. Stella Hartono (srhartono@ucdavis.edu)
 2. Linda Su-Feher (lsu@ucdavis.edu)
 3. Ravi Dandekar (rdandekar@ucdavis.edu)
 
-#B. Function
+##B. Function
 
 Automatically create a schedule of interviews based on certain parameters:
 - professor preferences to student
@@ -13,7 +13,7 @@ Automatically create a schedule of interviews based on certain parameters:
 - professor availabilities
 - distance between interview locations
 
-#C. Input
+##C. Input
 
 Input files are two files:  
 1. Professor schedule/availability
@@ -28,7 +28,7 @@ Input files are two files:
 5. Make sure professor name in professor schedule match those in student preference otherwise it won't work
 6. It's ok if there is only one name (e.g. John)
 
-#E. Formatting
+##E. Formatting
 
 **1. Professor schedule format:**  
 
@@ -58,13 +58,13 @@ Explanation:
 Professor name should be ordered by the student's desire to meet. For example at above, Student_name1 want to meet Professor_name1 the most.  
 If a professor request to meet a student, put an exclamation mark "!" in front of the professor's name. For example at above, professor_name3 wants to meet Student_name1.
 
-#D. How to install:  
+##D. How to install:  
 1. Install github (www.github.com)
 2. Clone this repo `git clone https://github.com/srhartono/Scheduler`
 3. Run 1_Process_Inpput.pl with your input files and project name, and it will produce the necessary files. This only need to be done once.
 4. Then run 2_Scheduler.pl from Result/<Project Name> folder
 
-#F. Example
+##F. Example
 
 ```
 bin/1_Process_Input.pl -a -b -p Data/Example/Prof.xls -s Data/Example/Stud.xls -n Example
@@ -72,9 +72,9 @@ bin/2_Scheduler.pl -d Result/Example/ -g 100 -p 100 -s 0.1
 #Best schedule output is at Result/Example/best_schedule.txt
 ```
 
-#G Advanced
+##G. Advanced
 
-##To add/remove professor location:  
+###To add/remove professor location:  
 
 1. Go to bin/
 2. Edit bin/professor_buildings.txt
@@ -83,7 +83,7 @@ bin/2_Scheduler.pl -d Result/Example/ -g 100 -p 100 -s 0.1
 Example:   
 `Building	jdoe	John Doe`
 
-##To add/remove building GPS location:  
+###To add/remove building GPS location:  
 
 1. Go to bin/GPSmatrixgen/
 2. Edit gpscoords.txt and add building, longitute, and latitude in tab separate format
