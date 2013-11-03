@@ -12,9 +12,14 @@ sub check_sanity {
 }
 
 sub print_usage {
-	print "\nusage: $0 [-e: both are microsoft excel files (optional)] -p <professor schedule file> -s <student preference file> -n <project name>
+	print "\nusage: $0 [options] -p <professor schedule file> -s <student preference file> -n <project name>
 
 -n: Project name is result folder name, must be alphanumeric
+
+options:
+-a: Required if professor schedule file is an excel file
+-b: Required if student preference file is an excel file
+
 
 Input format is very straightforward:
 --------------------------------------------------------------
@@ -54,8 +59,6 @@ Above, rofessor_name3 wants to meet Student_name1
 
 Make sure professor name in professor schedule match those in student schedule
 E.g. Doesn't match: John Glasser vs John Glaser
-
-See README.pdf for more information of format
 --------------------------------------------------------------
 
 ";
@@ -111,14 +114,14 @@ sub processProfessorTable {
 
 	# print header
 	print $professor_table_file_file_out "\#Professor_Data_Table\n#professor id\tfullname\tname\tdept\n";
-	print $prof_sched_file_out "\#Professor_Preference_Table\n\#professor id\tslots\n";
+	print $prof_sched_file_out "\#Professor_Preference_Table\n\#professor id\tlocation\tslots\n";
 
 	my $professor_number = 0;
 	foreach my $name (sort keys %result) {
 		my $fullname = lc($result{$name}{full});
 		my $location = defined($room{$name}) ? $room{$name} : defined($room{$fullname}) ? $room{$fullname} : "NA";
 		print $professor_table_file_file_out "p$professor_number\t$fullname\t$name\t$location\n";
-		print $prof_sched_file_out "p$professor_number\t";
+		print $prof_sched_file_out "p$professor_number\t$location\t";
 		my @slot = @{$result{$name}{data}};
 		for (my $i = 0; $i < @slot; $i++) {
 			$slot[$i] = 0 if $slot[$i] ne 1;
@@ -200,7 +203,7 @@ sub processStudentTable {
 	print $out2 "\#List of professor without schedule
 \#Name\tFull_Name
 \#If you find professor here that do have schedule, make sure that the professor names in both raw files match each other
-\#E.g. Doesn't match: John Glasser vs John Glaser";
+\#E.g. Doesn't match: John Glasser vs John Glaser\n";
 	for (my $i = 0; $i < @prof_without_schedule; $i++) {
 		print $out2 "$prof_without_schedule[$i]\n";
 	}
@@ -532,7 +535,7 @@ sub prof_schedule_score {
 		foreach my $slot (sort {$a <=> $b} keys %{$schedule{data}{$prof}}) {
 			my $student = $schedule{data}{$prof}{$slot};
 			die "student not defined\n" if not defined($student);
-			die "other defined at $prof $slot\n" if not defined($p_sched{$prof}{$slot});
+			die "Professor $prof schedule (starting at slot $slot) is not correct format\n" if not defined($p_sched{$prof}{$slot});
 			if ($student ne "NA" and $p_sched{$prof}{$slot} == 0) {
 				$numofna++;
 

@@ -21,31 +21,31 @@
 # the best schedule		 #
 ##################################
 
-my $dir;
+my $bin_dir;
 BEGIN {
-        $dir = `pwd` . "/bin/";
-        $dir =~ s/\n//;
-        $dir =~ s/bin\/bin/bin/;
-        push (@INC, $dir);
+        $bin_dir = `pwd` . "/bin/";
+        $bin_dir =~ s/\n//;
+        $bin_dir =~ s/bin\/bin/bin/;
+        push (@INC, $bin_dir);
 }
 
 use strict; use warnings FATAL => 'all';
 use scheduler;
 use Getopt::Std;
-use vars qw($opt_g $opt_p $opt_t);
-getopts("g:p:t:");
+use vars qw($opt_d $opt_g $opt_p $opt_s $opt_v);
+getopts("d:g:p:s:v");
 
 # Usage
-my ($generation, $pop_size, $selection_threshold) = ($opt_g, $opt_p, $opt_t);
+my ($dir, $generation, $pop_size, $selection_threshold) = ($opt_d, $opt_g, $opt_p, $opt_s);
 
-check_input_correctness($generation, $pop_size, $selection_threshold);
+check_input_correctness($dir, $generation, $pop_size, $selection_threshold);
 
 
 # First, process the data files	   #
 
 =head1 Processing Data Files
 
-Location of data files is at $dir/../Data/
+Data files is at $dir
 
 =cut
 
@@ -87,6 +87,7 @@ my %schedules = %{generate_random_schedules()};
 my $prev_average_best_fit_score;
 
 # Calculate score based on fitnessfunc.pm, then select_and_breed, for $generation number of times
+my $prev_score = 0;
 for (my $i = 0; $i <= $generation; $i+=$iterator) {
 
 	my $schedules = \%schedules;
@@ -98,8 +99,6 @@ for (my $i = 0; $i <= $generation; $i+=$iterator) {
 		($schedules, $prev_average_best_fit_score) = sort_schedule($schedules);
 	}
 
-	print "Previous Generation Score: $prev_average_best_fit_score\n";
-
 	# Select and Breed
 	$schedules = select_and_breed($schedules);
 
@@ -108,36 +107,26 @@ for (my $i = 0; $i <= $generation; $i+=$iterator) {
 	$schedules = calculate_fitness($schedules);
 	($schedules, $next_average_best_fit_score) = sort_schedule($schedules);
 	%schedules = %{$schedules};
-	foreach my $count (sort {$a <=> $b} keys %{$schedules}) {
-#		print "$count\t$schedules{$count}{score}\n";
-	}
-	
-	print "Next Generation Score: $next_average_best_fit_score\n";
+	my $buffer_score = int(2000000 + $next_average_best_fit_score)/10000;
+	my $addition = int(($buffer_score - $prev_score)*100)/100;
+	$prev_score = $buffer_score if $i != 0;
+	print "Generation $i Score: $buffer_score\n" if $i == 1 and $opt_v;
+	print "Generation $i Score: $buffer_score (difference $addition from previous generation)\n" if $i > 1 and $opt_v;
 	
 	# Mutate
 	$schedules = mutate($schedules, $prev_average_best_fit_score, $next_average_best_fit_score);
 	$schedules = mutate_to_NA($schedules, \%s_pref, \%p_pref, $i % 500);
 
-#	my $mutated_score;
-#	$schedule = calculate_fitness(\%schedule);
-#	($schedule, $mutated_score) = sort_schedule($schedule);
-#	%schedule = %{$schedule};
-#	print "After 1st mutation = $mutated_score\n";
-
 	$schedules = calculate_fitness($schedules);
 	($schedules, $prev_average_best_fit_score) = sort_schedule($schedules);
 	%schedules = %{$schedules};
-	foreach my $count (sort {$a <=> $b} keys %{$schedules}) {
-#		print "$count\t$schedules{$count}{score}\n";
-	}
-
-	print "Next Generation after mutation = $prev_average_best_fit_score\n";
 
 	# Print best fit schedule so user can assess it
 	print_schedule($schedules);
 
 }
-
+my $output = $dir . "best_schedule.txt";
+print "Output: $output\n";
 
 #########################################
 #					#
@@ -197,15 +186,16 @@ sub sort_schedule {
 }
 
 sub check_input_correctness {
-	my ($generation, $pop_size, $selection_threshold) = @_;
+	my ($directory, $generation, $pop_size, $selection_threshold) = @_;
 	die "
-usage: $0 -g <generation> -p <pop size> -t <threshold>\n
+usage: $0 [-v turn on messages] -d <directory of input> -g <generation> -p <pop size> -s <selection>\n
 -g: Number of Generation (positive integer) [use 0 to run forever]
 -p: Population Size (positive integer)
 -s: Selection Threshold (positive float between 0 and 1) - Fraction of population to be kept 
     E.g. keep top 10% of population: -s 0.1
 
-" unless defined($generation) and defined($pop_size) and defined($selection_threshold);
+" unless defined($directory) and defined($generation) and defined($pop_size) and defined($selection_threshold);
+	die "Directory does not exist!\n" 			     if not -d $directory;
 	die "Population size has to be integer more than 0!\n"	     if $pop_size   !~ /^\d+$/ or $pop_size < 1;
 	die "Generation has to be integer more than or eq as 0!\n"   if $generation !~ /^\d+$/ or $generation < 0;
 	die "Top score has to be floating point between 0 to 1\n"    if $selection_threshold !~ /^0\.\d+$/ or $selection_threshold <= 0 or $selection_threshold >= 1;
@@ -226,7 +216,7 @@ where slot 0 is unavailable, 1 is available
 
 =cut
 	
-	my $p_sched = "$dir\/..\/Data\/professor_schedule_final.txt";
+	my $p_sched = "$dir\/professor_schedule_final.txt";
 	open (my $p_sched_in, "<", $p_sched) or die "Cannot read from $p_sched: $!\n";
 	my %p_sched; # prof schedule
 	my %p_loc; # location for function 5 distance matrix
@@ -252,7 +242,7 @@ where place correspond to distance matrix location data
 	
 =cut
 	
-	my $p_table = "$dir\/..\/Data/professor_table_final.txt";
+	my $p_table = "$dir\/professor_table_final.txt";
 	my %p_table;
 	open (my $p_table_in, "<", $p_table) or die "Cannot read from $p_table: $!\n";
 	while (my $line = <$p_table_in>) {
@@ -273,7 +263,7 @@ prof_name	students(>=0)
 	
 =cut
 	
-	my $p_pref = "$dir\/..\/Data/professor_preference_final.txt";
+	my $p_pref = "$dir\/professor_preference_final.txt";
 	my %p_pref;
 	open (my $p_pref_in, "<", $p_pref) or die "Cannot read from $p_pref\n";
 	while (my $line = <$p_pref_in>) {
@@ -293,7 +283,7 @@ code	student_name
 		
 =cut
 	
-	my $s_table = "$dir\/..\/Data/student_table_final.txt";
+	my $s_table = "$dir\/student_table_final.txt";
 	my %s_table;
 	open (my $s_table_in, "<", $s_table) or die "Cannot read from $s_table: $!\n";
 	while (my $line = <$s_table_in>) {
@@ -315,14 +305,15 @@ score for each prof is between
 	
 =cut
 	
-	my $s_pref = "$dir\/..\/Data\/student_preference_final.txt";
+	my $s_pref = "$dir\/student_preference_final.txt";
 	my %s_pref;
 	open (my $s_pref_in, "<", "$s_pref") or die "Cannot read from $s_pref: $!\n";
 	while (my $line = <$s_pref_in>) {
 		chomp($line);
-		my ($name, @prefscore) = split("\t", $line);
-		for (my $j = 0; $j < @prefscore; $j++) {
-			my ($prof, $p_score) = split("_", $prefscore[$j]);
+		my ($name, @prof) = split("\t", $line);
+		for (my $j = 0; $j < @prof; $j++) {
+			my $prof = $prof[$j];
+			my $p_score = (@prof - $j - 1) > 10 ? 10 : @prof - $j - 1;
 			$s_pref{$name}{$prof} = $p_score;
 			}
 	}
@@ -344,7 +335,7 @@ This is converted into time in minutes
 
 =cut
 	
-	my $dmat = "$dir\/..\/Data\/distcoords.txt";
+	my $dmat = "$bin_dir\/GPSmatrixgen/distcoords.txt";
 	my %dmat;
 	my @pos;
 	open (my $dmat_in, "<", $dmat) or die "Cannot read from $dmat: $!\n";
@@ -394,7 +385,6 @@ sub generate_random_schedules {
 				$schedules{$counts}{data}{$prof}{$slot} = "NA" if $avail == 0;
 				# 2. Professor will meet their desired student in non-NA place
 				next if not defined(@{$p_pref{$prof}}) or @{$p_pref{$prof}} == 0;
-				#print "$prof @{$p_pref{$prof}}\n";
 				while (1) {
 					my $random_pref = int(rand((@{$p_pref{$prof}})));
 					if (@{$p_pref{$prof}} != 0 and not grep(/^$p_pref{$prof}[$random_pref]$/i, @{$used{$prof}})) {
@@ -544,81 +534,75 @@ sub print_schedule {
 	my %stud_sched;
 	my $highest_score = -9999999;
 
+	open (my $out, ">", "$dir/best_schedule.txt") or die "Cannot write to $dir/best_schedule.txt: $!\n";
 	foreach my $number (sort {$schedule{$b}{score} <=> $schedule{$a}{score}} keys %schedule) {
 		$highest_score = $schedule{$number}{score};
 		last;
 	}
-	print "\# $highest_score\n";
-	print "Best Professor Schedule\t\t\t\t\t\tAvailability (given)\t\t\t\t\tProfessor Preference (given)\n";
-	print "name\tday1.1\tday1.2\tday1.3\tday2.1\tday2.2\tday2.3\t\tday1.1\tday1.2\tday1.3\tday2.1\tday2.2\tday2.3\t\t(Student the professor wants to meet (given))\n";
+	$highest_score = int(2000000 + $highest_score)/10000;
+
+	print $out "# Score: $highest_score\n";
+	print $out "# Best Professor Schedule\n";
 	foreach my $number (sort {$schedule{$b}{score} <=> $schedule{$a}{score}} keys %schedule) {
 		for (my $i = 0; $i < @gen_prof; $i++) {
 			my $prof = $gen_prof[$i];
-			my $profname = $p_table{$prof}{name};
-			#print "$profname\t";
-			print "$prof\t";
+			my $profname = fix_name($p_table{$prof}{name});
+			print $out "$profname";
 			foreach my $slot (sort {$a <=> $b} keys %{$schedule{$number}{data}{$prof}}) {
 				my $stud = $schedule{$number}{data}{$prof}{$slot};
 				my $studname = defined($s_table{$stud}{name}) ? $s_table{$stud}{name} : "NA";
-				#print "$studname\t";
-				print "$stud\t";
+				print $out "\t$studname";
 				next if $stud eq "NA";
 				$stud_sched{$stud}{$slot} = $prof;
 			}
-			foreach my $slot (sort {$a <=> $b} keys %{$p_sched{$prof}}) {
-				print "\t" if $slot == 0;
-				my $slotname = "NOT" if $p_sched{$prof}{$slot} == 0;
-				$slotname = "AVAIL" if $p_sched{$prof}{$slot} == 1;
-				print "$slotname\t";
-			}
-			my $studcount = 0;
-			foreach my $student (@{$p_pref{$prof}}) {
-				next if $student eq "";
-				print "\t" if $studcount == 0;
-				my $studname = defined($s_table{$student}{name}) ? $s_table{$student}{name} : "NA";
-				$studcount = 1;
-				#print "$studname ";
-				print "$student ";
-			}
-			print "\n";
+			print $out "\n";
 		}
 		last;
 	}
-	print "\n----------------------------------------------------------------------------------------------------------\n";
-	print "\nBest Student Schedule\t\t\t\t\t\tLocation\t\t\t\t\t\tStudent Preference (given)\n";
-	print "name\tday1.1\tday1.2\tday1.3\tday2.1\tday2.2\tday2.3\t\tday1.1\tday1.2\tday1.3\tday2.1\tday2.2\tday2.3\t\t(Professor that they want to meet)\n";
+	print $out "\n# Best Student Schedule\n";
 	for (my $i = 0; $i < @gen_stud; $i++) {
 		my $stud = $gen_stud[$i];
 		next if $stud eq "NA";
 		my $studname = $s_table{$stud}{name};
-		#print "$studname\t";
-		print "$stud\t";
+		print $out "$studname";
 		for (my $j = 0; $j < 6; $j++) {
 			my $prof = $stud_sched{$stud}{$j};
 			$prof = "NA" if not defined($prof);
 			my $profname = defined($p_table{$prof}{name}) ? $p_table{$prof}{name} : "NA";
-			#print "$profname\t";
-			print "$prof\t";
+			$profname = fix_name($profname);
+			print $out "\t$profname";
 		}
-		print "\t";
-		for (my $j = 0; $j < 6; $j++) {
-			my $prof = $stud_sched{$stud}{$j};
-			$prof = "NA" if not defined($prof);
-			print "BREAK\t" and next if $prof eq "NA";
-			my $loc = $p_loc{$prof};
-			print "$loc\t";
-		}
-		print "\t";
-		foreach  my $prof (sort {$s_pref{$stud}{$b} <=> $s_pref{$stud}{$a}} keys %{$s_pref{$stud}}) {
-			my $fitness_score = $s_pref{$stud}{$prof};
-			my $profname = defined($p_table{$prof}{name}) ? $p_table{$prof}{name} : "NA";
-			print "$prof\_$fitness_score ";
-			#print "$profname\_$fitness_score ";
-		}
-		print "\n";
+		print $out "\n";
 	}
-	print "\n";
+	print $out "\n# Location\n";
+	for (my $i = 0; $i < @gen_stud; $i++) {
+		my $stud = $gen_stud[$i];
+		next if $stud eq "NA";
+		my $studname = $s_table{$stud}{name};
+		print $out "$studname";
+		for (my $j = 0; $j < 6; $j++) {
+			my $prof = $stud_sched{$stud}{$j};
+			$prof = "NA" if not defined($prof);
+			print $out "\tBREAK" and next if $prof eq "NA";
+			my $loc = $p_loc{$prof};
+			print $out "\t$loc";
+		}
+		print $out "\n";
+	}
+	print $out "\n";
 }
 
+sub fix_name {
+	my ($name) = @_;
+	my @name = split(" ", $name);
+	my @fixname;
+	for (my $i = 0; $i < @name; $i++) {
+		my ($first, $rest) = $name[$i] =~ /^(.)(.+)$/;
+		$first = uc($first);
+		push(@fixname, "$first$rest");
+	}
+	$name = join(" ", @fixname);
+	return($name);
+}
 __END__
 

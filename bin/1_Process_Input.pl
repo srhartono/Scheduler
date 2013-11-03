@@ -60,7 +60,7 @@ print "Done!\n";
 
 
 
-if ($opt_v == 1) {
+if (defined($opt_v)) {
 	print "\nResults\n";
 	print "Note: Resulting files are all .TSV format (Tab Separated Values)\n\n";
 	my @result = (
