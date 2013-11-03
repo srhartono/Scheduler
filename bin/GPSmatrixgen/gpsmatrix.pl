@@ -6,7 +6,9 @@ use Math::Trig;
 # Reads in text file of tab-separated GPS coordinates (name, lon, lat). 
 # Calculates distance between two GPS coordinates via Haversine formula. 
 
-open (IN, "<$ARGV[0]") or die "gps coordinates file not found"; 
+my ($input) = @ARGV;
+die "usage: $0 <GPS coordinate (tsv format of name, longitude, latitude)>\n" unless @ARGV;
+open (IN, "<$input") or die "gps coordinates file not found"; 
 
 my %BUILDINGS; 
 
