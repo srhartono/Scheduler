@@ -88,7 +88,12 @@ my $prev_average_best_fit_score;
 
 # Calculate score based on fitnessfunc.pm, then select_and_breed, for $generation number of times
 my $prev_score = 0;
+my @score;
 for (my $i = 0; $i <= $generation; $i+=$iterator) {
+
+	printf "Running Generation %d (previous score = $prev_score)\n", abs($i);
+	push(@score, $prev_score);
+	plot_score(@score);
 
 	my $schedules = \%schedules;
 
@@ -371,13 +376,16 @@ sub generate_random_schedules {
 	#Initialize hashes required for multilayer hash storage of random table generator
 	my %schedules;          # contains all randomly generated hashes
 	my $counts = 0;
+
+	# Total professor schedule
+	my $total_professor_slot = 0;
 	
 	# Seed
-	
 	while ($counts != $pop_size)   {
 
-		# Seeding
 		foreach my $prof (keys %p_sched) {
+			$total_professor_slot = (keys %{$p_sched{$prof}}) if $total_professor_slot < (keys %{$p_sched{$prof}});
+
 			my %used;
 			foreach my $slot (keys %{$p_sched{$prof}}) {
 				my $avail = $p_sched{$prof}{$slot};
@@ -401,7 +409,7 @@ sub generate_random_schedules {
 
 
 	        foreach my $prof (@gen_prof) {
-	                my @RandomStudents = random_students(\@gen_stud);
+	                my @RandomStudents = random_students(\@gen_stud, $total_professor_slot);
 	                for (my $i = 0; $i < @RandomStudents; $i++) {
 	                        my $student = $RandomStudents[$i];
 	                        $schedules{$counts}{data}{$prof}{$i} = $student if not defined($schedules{$counts}{data}{$prof}{$i});
@@ -413,15 +421,14 @@ sub generate_random_schedules {
 }
 
 sub random_students{
-        my ($students) = @_;
+        my ($students, $total_professor_slot) = @_;
 	my @students = @{$students};
-        my $slots = 6;
         my @random_students;
-        while ($slots != 0) {
+        while ($total_professor_slot != 0) {
                 my $random = int(rand(@gen_stud));
                 my $individual = $students[$random];
                 push (@random_students, "$individual");
-                $slots--;
+                $total_professor_slot--;
         }
         return @random_students;
 }
@@ -603,6 +610,29 @@ sub fix_name {
 	}
 	$name = join(" ", @fixname);
 	return($name);
+}
+
+sub plot_score {
+	my (@score) = @_;
+
+	my $Rscript = "pdf(\"$dir/Score.pdf\")";
+
+	my $y_axis = "score = c(";
+	for (my $i = 0; $i < @score; $i++) {
+		my $line_ending = $i == @score - 1 ? ")" : ",";
+		$y_axis .= "$score[$i]$line_ending";
+	}
+	my $x_axis = "xaxis = seq(1:length(score))";
+	$Rscript .= "
+	$y_axis
+	$x_axis
+	plot(xaxis,score,xlab=\"Generation\",ylab=\"Score\",type=\"n\")
+	lines(xaxis,score)
+	";
+	open (my $out, ">", "$dir/Score.R") or print "Failed to print out Generation x Score R script: $!\n";
+	print $out "$Rscript\n";
+	system("R --no-save < $dir/Score.R > /dev/null 2&>1") == 0 or print "Failed to run R script that plot Generation x Scores: $!\n";
+
 }
 __END__
 

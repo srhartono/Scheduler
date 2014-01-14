@@ -63,7 +63,7 @@ E.g. Doesn't match: John Glasser vs John Glaser
 
 ";
 }
-
+my $ResultDir = "";
 sub define_directory {
 	my ($project_name) = @_;
 	
@@ -72,6 +72,7 @@ sub define_directory {
 	$current_dir =~ s/bin\/bin/bin/;
 	my ($main_dir)  = $current_dir =~ /^(.+)\/bin\/?$/;
 	my $result_dir  = $main_dir . "/Result/$project_name/";
+	$ResultDir = $result_dir;
 	if (not -d $result_dir) {
 	        system("mkdir $result_dir") == 0 or die "Cannot create result directory $result_dir: $!\n";
 	}
@@ -444,6 +445,8 @@ sub fix_name {
 }
 sub interrupt {
 	print STDERR "\n\nScript cancelled\n\n";
+	print "Best schedule is:	$ResultDir/best_schedule.txt\n";
+	print "Score graph is:	$ResultDir/Score.pdf\n";
 	exit;
 }
 
@@ -532,8 +535,10 @@ sub prof_schedule_score {
 
 	# 1. Does schedule match the professor's slot?
 	foreach my $prof (sort keys %{$schedule{data}}) {
+
 		foreach my $slot (sort {$a <=> $b} keys %{$schedule{data}{$prof}}) {
 			my $student = $schedule{data}{$prof}{$slot};
+
 			die "student not defined\n" if not defined($student);
 			die "Professor $prof schedule (starting at slot $slot) is not correct format\n" if not defined($p_sched{$prof}{$slot});
 			if ($student ne "NA" and $p_sched{$prof}{$slot} == 0) {
