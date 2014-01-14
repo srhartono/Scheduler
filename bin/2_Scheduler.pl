@@ -91,9 +91,6 @@ my $prev_score = 0;
 my @score;
 for (my $i = 0; $i <= $generation; $i+=$iterator) {
 
-	printf "Running Generation %d (previous score = $prev_score)\n", abs($i);
-	push(@score, $prev_score);
-	plot_score(@score);
 
 	my $schedules = \%schedules;
 
@@ -115,8 +112,19 @@ for (my $i = 0; $i <= $generation; $i+=$iterator) {
 	my $buffer_score = int(2000000 + $next_average_best_fit_score)/10000;
 	my $addition = int(($buffer_score - $prev_score)*100)/100;
 	$prev_score = $buffer_score if $i != 0;
-	print "Generation $i Score: $buffer_score\n" if $i == 1 and $opt_v;
-	print "Generation $i Score: $buffer_score (difference $addition from previous generation)\n" if $i > 1 and $opt_v;
+	printf "Generation %d Score: $buffer_score\n", abs($i) if abs($i) == 1 and $opt_v;
+	printf "Generation %d Score: $buffer_score (difference $addition from previous generation)\n", abs($i) if abs($i) > 1 and $opt_v;
+
+	# Plot at last generation
+	push(@score, $buffer_score) if $i != 0;
+	if ($i == $generation and $i != 0) {
+		plot_score(@score);
+	}
+	
+	# Plot every 2^n generation if -g is 0 (unlimited generation)
+	if ($generation == 0 and $i != 0 and (log(abs($i))/log(2)) =~ /^\d+$/) {
+		plot_score(@score);
+	}
 	
 	# Mutate
 	$schedules = mutate($schedules, $prev_average_best_fit_score, $next_average_best_fit_score);
@@ -130,8 +138,10 @@ for (my $i = 0; $i <= $generation; $i+=$iterator) {
 	print_schedule($schedules);
 
 }
-my $output = $dir . "best_schedule.txt";
-print "Output: $output\n";
+my $best_output  = $dir . "best_schedule.txt";
+my $score_graph  = $dir . "Score.pdf";
+print "Best schedule: $best_output\n";
+print "Score graph: $score_graph\n";
 
 #########################################
 #					#
@@ -612,6 +622,7 @@ sub fix_name {
 	return($name);
 }
 
+# Plotting score. We skipped first 2 generations because their score will always be 0
 sub plot_score {
 	my (@score) = @_;
 
@@ -626,8 +637,10 @@ sub plot_score {
 	$Rscript .= "
 	$y_axis
 	$x_axis
-	plot(xaxis,score,xlab=\"Generation\",ylab=\"Score\",type=\"n\")
-	lines(xaxis,score)
+	plot(xaxis,score,xlab=\"Generation\",ylab=\"Score\",type=\"n\",main=\"Score over Generation\")
+	lines(xaxis,score,col=\"red\")
+	points(xaxis,score,col=\"black\",pch=\".\")
+	dev.off()
 	";
 	open (my $out, ">", "$dir/Score.R") or print "Failed to print out Generation x Score R script: $!\n";
 	print $out "$Rscript\n";

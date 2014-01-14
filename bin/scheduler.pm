@@ -2,6 +2,7 @@ package schedulerFormat;
 
 use strict; use warnings; 
 use Cwd; use Spreadsheet::ParseExcel;
+
 $SIG{INT} = \&interrupt;
 
 sub check_sanity {
@@ -63,7 +64,8 @@ E.g. Doesn't match: John Glasser vs John Glaser
 
 ";
 }
-my $ResultDir = "";
+
+
 sub define_directory {
 	my ($project_name) = @_;
 	
@@ -72,7 +74,6 @@ sub define_directory {
 	$current_dir =~ s/bin\/bin/bin/;
 	my ($main_dir)  = $current_dir =~ /^(.+)\/bin\/?$/;
 	my $result_dir  = $main_dir . "/Result/$project_name/";
-	$ResultDir = $result_dir;
 	if (not -d $result_dir) {
 	        system("mkdir $result_dir") == 0 or die "Cannot create result directory $result_dir: $!\n";
 	}
@@ -83,6 +84,7 @@ sub define_directory {
 	}
 	return($main_dir, $result_dir);
 }
+
 
 sub processProfessorTable {
 	my ($prof_raw_file, $result_dir, $main_dir, $excel) = @_;
@@ -444,9 +446,10 @@ sub fix_name {
 	return($newname, $special);
 }
 sub interrupt {
+	my ($ResultDir) = @_;
 	print STDERR "\n\nScript cancelled\n\n";
-	print "Best schedule is:	$ResultDir/best_schedule.txt\n";
-	print "Score graph is:	$ResultDir/Score.pdf\n";
+	print "Best schedule: Result/<Project Name>/best_schedule.txt\n";
+	print "Score graph: Result/<Project Name>/Score.pdf\n";
 	exit;
 }
 
