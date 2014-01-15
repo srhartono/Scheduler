@@ -96,6 +96,7 @@ Example:
 
 The script will produce the best schedule and a graph (Score.pdf) showing the scores per generation. Example:
 
+```
 # Score: 188.291
 # Best Professor Schedule
 Alan Rose       Peter Parker    Clark Kent      Bruce Wayne     NA
@@ -124,3 +125,4 @@ Clark Kent      Tupper  Briggs  Wickson LSA
 Peter Parker    Briggs  GBSF    LSA     Admuns
 Robert Bruce Banner     Wickson Briggs  GBSF    GBSF
 Tony Stark      Admuns  LSA     Tupper  GBSF
+```
