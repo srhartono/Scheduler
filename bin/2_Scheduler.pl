@@ -582,7 +582,7 @@ sub print_schedule {
 		next if $stud eq "NA";
 		my $studname = $s_table{$stud}{name};
 		print $out "$studname";
-		for (my $j = 0; $j < 6; $j++) {
+		for (my $j = 0; $j < keys %{$stud_sched{$stud}}; $j++) {
 			my $prof = $stud_sched{$stud}{$j};
 			$prof = "NA" if not defined($prof);
 			my $profname = defined($p_table{$prof}{name}) ? $p_table{$prof}{name} : "NA";
@@ -597,7 +597,7 @@ sub print_schedule {
 		next if $stud eq "NA";
 		my $studname = $s_table{$stud}{name};
 		print $out "$studname";
-		for (my $j = 0; $j < 6; $j++) {
+		for (my $j = 0; $j < keys %{$stud_sched{$stud}}; $j++) {
 			my $prof = $stud_sched{$stud}{$j};
 			$prof = "NA" if not defined($prof);
 			print $out "\tBREAK" and next if $prof eq "NA";
@@ -644,7 +644,8 @@ sub plot_score {
 	";
 	open (my $out, ">", "$dir/Score.R") or print "Failed to print out Generation x Score R script: $!\n";
 	print $out "$Rscript\n";
-	system("R --no-save < $dir/Score.R > /dev/null 2&>1") == 0 or print "Failed to run R script that plot Generation x Scores: $!\n";
+	#system("R --no-save < $dir/Score.R") == 0 or die "Failed to run R script that plot Generation x Scores: $!\n";
+	system("R --no-save < $dir/Score.R > /dev/null 2&>1 && sleep 0.01") == 0 or die "Failed to run R script that plot Generation x Scores: $!\n";
 
 }
 __END__
