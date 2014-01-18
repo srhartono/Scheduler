@@ -91,3 +91,38 @@ Example:
 
 Example:  
 `Building	-121.00124	38.235`
+  
+###H. Output Example
+
+The script will produce the best schedule and a graph (Score.pdf) showing the scores per generation. Example:
+
+```
+# Score: 188.291
+# Best Professor Schedule
+Alan Rose       Peter Parker    Clark Kent      Bruce Wayne     NA
+Chengji Zhou    NA      NA      Clark Kent      Peter Parker
+Dan Kliebenstein        Tony Stark      NA      Bruce Wayne     Peter Parker
+Dan Parfitt     Robert Bruce Banner     Peter Parker    Clark Kent      NA
+David Segal     NA      NA      NA      Tony Stark
+Dan Starr       Clark Kent      Bruce Wayne     NA      NA
+Fred Chedin     NA      Robert Bruce Banner     Peter Parker    NA
+Ian Korf        Clark Kent      NA      Tony Stark      Robert Bruce Banner
+Julin Maloof    Bruce Wayne     Tony Stark      Peter Parker    NA
+Lesilee Rose    NA      NA      NA      Clark Kent
+Richard Michelmore      NA      Peter Parker    Robert Bruce Banner     NA
+Tom Glaser      Clark Kent      NA      Tony Stark      Bruce Wayne
+
+# Best Student Schedule
+Bruce Wayne     Julin Maloof    Dan Starr       Dan Kliebenstein        Tom Glaser
+Clark Kent      Tom Glaser      Alan Rose       Dan Parfitt     Lesilee Rose
+Peter Parker    Alan Rose       Richard Michelmore      Julin Maloof    Dan Kliebenstein
+Robert Bruce Banner     Dan Parfitt     Fred Chedin     Richard Michelmore      Ian Korf
+Tony Stark      Dan Kliebenstein        Julin Maloof    Tom Glaser      David Segal
+
+# Location
+Bruce Wayne     LSA     Briggs  Admuns  Tupper
+Clark Kent      Tupper  Briggs  Wickson LSA
+Peter Parker    Briggs  GBSF    LSA     Admuns
+Robert Bruce Banner     Wickson Briggs  GBSF    GBSF
+Tony Stark      Admuns  LSA     Tupper  GBSF
+```
