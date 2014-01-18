@@ -112,8 +112,6 @@ for (my $i = 0; $i <= $generation; $i+=$iterator) {
 	my $buffer_score = int(2000000 + $next_average_best_fit_score)/10000;
 	my $addition = int(($buffer_score - $prev_score)*100)/100;
 	$prev_score = $buffer_score if $i != 0;
-	printf "Generation %d Score: $buffer_score\n", abs($i) if abs($i) == 1 and $opt_v;
-	printf "Generation %d Score: $buffer_score (difference $addition from previous generation)\n", abs($i) if abs($i) > 1 and $opt_v;
 
 	# Plot at last generation
 	push(@score, $buffer_score) if $i != 0;
@@ -128,15 +126,24 @@ for (my $i = 0; $i <= $generation; $i+=$iterator) {
 	
 	# Mutate
 	$schedules = mutate($schedules, $prev_average_best_fit_score, $next_average_best_fit_score);
-	$schedules = mutate_to_NA($schedules, \%s_pref, \%p_pref, $i % 500);
+	
+	# Mutate every 500 generations to prevent plateauing and to give chance for new (probably better) mutation. Comment this to disable
+	$schedules = mutate_to_NA($schedules, \%s_pref, \%p_pref, 0) if $i != 0;
 
 	$schedules = calculate_fitness($schedules);
 	($schedules, $prev_average_best_fit_score) = sort_schedule($schedules);
 	%schedules = %{$schedules};
 
-	# Print best fit schedule so user can assess it
-	print_schedule($schedules);
+	$schedules = fitnessfunc::conflict_resolve($schedules, \%p_sched) if $i % 10 == 0 and $i != 0;
+	if ($i == $generation) {
+		$schedules = mutate_to_NA($schedules, \%s_pref, \%p_pref, -1);
+	}
 
+	# Print best fit schedule so user can assess it
+	print_current_schedule_debug(\%schedules) if $opt_v; # Print #1 schedule on terminal for fast debugging
+	print_schedule($schedules);
+	printf "Generation %d Score: $buffer_score\n", abs($i) if abs($i) == 1 and $opt_v;
+	printf "Generation %d Score: $buffer_score (difference $addition from previous generation)\n", abs($i) if abs($i) > 1 and $opt_v;
 }
 my $best_output  = $dir . "best_schedule.txt";
 my $score_graph  = $dir . "Score.pdf";
@@ -415,15 +422,24 @@ sub generate_random_schedules {
 				}
 			}
 		}
-	
+
+		# Seed so that student meet their professor of choice
+		foreach my $student (sort keys %s_pref) {
+			foreach my $prof (sort keys %{$s_pref{$student}}) {
+				next if not defined($p_pref{$prof});
+				my $slot = int(rand($total_professor_slot));
+				$schedules{$counts}{data}{$prof}{$slot} = $student if not defined($schedules{$counts}{data}{$prof}{$slot});
+			}
+		}
 
 
 	        foreach my $prof (@gen_prof) {
+			
 	                my @RandomStudents = random_students(\@gen_stud, $total_professor_slot);
 	                for (my $i = 0; $i < @RandomStudents; $i++) {
 	                        my $student = $RandomStudents[$i];
 	                        $schedules{$counts}{data}{$prof}{$i} = $student if not defined($schedules{$counts}{data}{$prof}{$i});
-		                }
+	                }
         	}
 		$counts++;
 	}
@@ -479,7 +495,8 @@ sub mutate {
 	my %schedule = %{$schedule};
 	my $count = (keys %schedule);
 
-	my $mutatenum = 0.01;
+	my $mutatenum = 0.02;
+
 	#my $totsch = 0.85*(keys %schedule);
 	#my $diff_fitness_score = abs($children_score - $parents_score);
 
@@ -488,17 +505,44 @@ sub mutate {
 	#	($schedule) = select_and_breed(\%schedule, 10*$pop_size);
 	#	%schedule = %{$schedule};
 	#	$mutatenum =  (0.01-$diff_fitness_score)/0.01 * 0.15;
-#
-#	}
+	#
+	#}
 
-	foreach my $number (keys %schedule) {
-		next if $number < $selection_threshold * (keys %schedule);
+	foreach my $number (sort {$a <=> $b} keys %schedule) {
+		next if $number < $selection_threshold/2 * (keys %schedule);
 		foreach my $prof (keys %{$schedule{$number}{data}}) {
-			foreach my $slot (keys %{$schedule{$number}{data}{$prof}}) {
+			foreach my $slot (sort {$a <=> $b} keys %{$schedule{$number}{data}{$prof}}) {
 				my $mutate = rand();
 				if ($mutate < $mutatenum) {
 					my $studmutate = $gen_stud[int(rand(@gen_stud))];
 					$schedule{$number}{data}{$prof}{$slot} = $studmutate;
+				}
+
+				# Try to seed student with their professor of preference
+				# So far, the best is if it happens all the time 
+				if ($mutate < 0.5) {
+					my $current_stud = $schedule{$number}{data}{$prof}{$slot};
+					next if defined($s_pref{$current_stud}{$prof}) and $s_pref{$current_stud}{$prof} !~ /^$/;
+					foreach my $student (@gen_stud) {
+						next if $student eq "NA";
+						my $next = 0;
+						if (defined($s_pref{$student}{$prof})) {
+							foreach my $slot2 (keys %{$schedule{$number}{data}{$prof}}) {
+								next if $slot eq $slot2;
+								if ($schedule{$number}{data}{$prof}{$slot2} eq $student) {
+									$next = 1;
+								last;
+								}
+							}
+						}
+						else {
+							next;
+						}
+						next if $next == 1;
+						if (defined($s_pref{$student}{$prof})) {
+							$schedule{$number}{data}{$prof}{$slot} = $student;
+						}
+					}
 				}
 			}
 		}
@@ -512,12 +556,15 @@ sub mutate_to_NA {
 	my %schedule = %{$schedule};
 	my %s_pref = %{$s_pref};
 	my %p_pref = %{$p_pref};
+	my $max_slot = 0;
 
 	foreach my $number (keys %schedule) {
 		next if $number < $selection_threshold * (keys %schedule);
 		foreach my $prof (keys %{$schedule{$number}{data}}) {
 			foreach my $slot (keys %{$schedule{$number}{data}{$prof}}) {
+				$max_slot = $slot if $max_slot < $slot;
 				my $student = $schedule{$number}{data}{$prof}{$slot};
+				next if $student eq "NA";
 
 				if (@{$p_pref{$prof}} != 0 and rand() < 0.005 and $p_sched{$prof}{$slot} != 0) {
 					my $student2 = $p_pref{$prof}[int(rand(@{$p_pref{$prof}}))];
@@ -528,28 +575,75 @@ sub mutate_to_NA {
 					$schedule{$number}{data}{$prof}{$slot} = $student2 if $check_student_exists == 0;
 				}
 
-				next if $student eq "NA";
 			}
 		}
 	}
 	foreach my $number (keys %schedule) {
-		foreach my $prof (keys %{$schedule{$number}{data}}) {
-			foreach my $slot (keys %{$schedule{$number}{data}{$prof}}) {
+		foreach my $prof (sort keys %{$schedule{$number}{data}}) {
+			for (my $i = 0; $i <= $max_slot; $i++) {
+				my $slot = $i;
 				my $student = $schedule{$number}{data}{$prof}{$slot};
-				$schedule{$number}{data}{$prof}{$slot} = "NA" if (not defined($s_pref{$student}{$prof})) and $count == 0;
-				
+				next if $student eq "NA";
+				undef $s_pref{$student}{$prof} if defined($s_pref{$student}{$prof}) and $s_pref{$student}{$prof} =~ /^$/;
+				if ($count <= 0 and not defined($s_pref{$student}{$prof})) {
+					#print "Mutated to NA: $student slot $slot prof $prof\n";
+					$schedule{$number}{data}{$prof}{$slot} = "NA";# if rand(1) < 0.5 and $count != -1;
+					$schedule{$number}{data}{$prof}{$slot} = "NA" if $count == -1;
+				}
 			}
 		}
 	}
-
 	return(\%schedule);
 }
 
+sub print_current_schedule_debug {
+	my ($schedule) = @_;
+	my $max_slot = 0;
+	my %schedule = %{$schedule};
+	my %data;
+	print "\nProfessor Schedule (Professor availability is on the right)";
+	foreach my $number (sort {$schedule{$b}{score} <=> $schedule{$a}{score}} keys %schedule) {
+		foreach my $prof (sort keys %{$schedule{$number}{data}}) {
+			my $profname = defined($p_table{$prof}{name}) ? $p_table{$prof}{name} : "NA";
+			print"$prof\t";
+			foreach my $slot (sort {$a <=> $b} keys %{$schedule{$number}{data}{$prof}}) {
+				$max_slot = $slot if $max_slot < $slot;
+				my $stud = $schedule{$number}{data}{$prof}{$slot};
+				$data{$stud}{$slot} = $prof if $stud ne "NA";
+				print "$stud\t";
+			}
+			print "|";
+			foreach my $slot (sort {$a <=> $b} keys %{$p_sched{$prof}}) {
+				print "\t$p_sched{$prof}{$slot}";
+			}
+			print "\n";
+		}
+		last;
+	}
+	print "\nStudent Schedule (Student preference table is on the right)\n";
+	for (my $i = 0; $i < @gen_stud; $i++) {
+		my $stud = $gen_stud[$i];
+		next if $stud eq "NA";
+		print "$stud\t";
+		for (my $i = 0; $i <= $max_slot; $i++) {
+			my $slot = $i;
+			$data{$stud}{$slot} = "NA" if not defined($data{$stud}{$slot});
+			print "$data{$stud}{$slot}\t";
+		}
+		print "|";
+		foreach my $prof (sort keys %{$s_pref{$stud}}) {
+			print "\t$prof";
+			
+		}
+		print "\n";
+	}
+}
 sub print_schedule {
 	my ($schedule) = @_;
 	my %schedule = %{$schedule};
 	my %stud_sched;
 	my $highest_score = -9999999;
+	my $max_slot = 0;
 
 	open (my $out, ">", "$dir/best_schedule.txt") or die "Cannot write to $dir/best_schedule.txt: $!\n";
 	foreach my $number (sort {$schedule{$b}{score} <=> $schedule{$a}{score}} keys %schedule) {
@@ -566,6 +660,7 @@ sub print_schedule {
 			my $profname = fix_name($p_table{$prof}{name});
 			print $out "$profname";
 			foreach my $slot (sort {$a <=> $b} keys %{$schedule{$number}{data}{$prof}}) {
+				$max_slot = $slot if $max_slot < $slot;
 				my $stud = $schedule{$number}{data}{$prof}{$slot};
 				my $studname = defined($s_table{$stud}{name}) ? $s_table{$stud}{name} : "NA";
 				print $out "\t$studname";
@@ -582,7 +677,7 @@ sub print_schedule {
 		next if $stud eq "NA";
 		my $studname = $s_table{$stud}{name};
 		print $out "$studname";
-		for (my $j = 0; $j < keys %{$stud_sched{$stud}}; $j++) {
+		for (my $j = 0; $j <= $max_slot; $j++) {
 			my $prof = $stud_sched{$stud}{$j};
 			$prof = "NA" if not defined($prof);
 			my $profname = defined($p_table{$prof}{name}) ? $p_table{$prof}{name} : "NA";
@@ -597,7 +692,7 @@ sub print_schedule {
 		next if $stud eq "NA";
 		my $studname = $s_table{$stud}{name};
 		print $out "$studname";
-		for (my $j = 0; $j < keys %{$stud_sched{$stud}}; $j++) {
+		for (my $j = 0; $j <= $max_slot; $j++) {
 			my $prof = $stud_sched{$stud}{$j};
 			$prof = "NA" if not defined($prof);
 			print $out "\tBREAK" and next if $prof eq "NA";

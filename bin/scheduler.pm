@@ -104,6 +104,7 @@ sub processProfessorTable {
 	my %room;
 	open (my $prof_room_final_in, "<", "$main_dir/bin/professor_buildings.txt") or die "Cannot read from $main_dir/bin/professor_buildings.txt: $!\n";
 	while (my $line = <$prof_room_final_in>) {
+		next if $line =~ /\#/;
 		my ($room, $name, $fullname) = split("\t", $line);
 		$room{lc($name)} = $room;
 		$room{lc($fullname)} = $room;
@@ -234,7 +235,7 @@ sub processProfessorDemand {
 	}
 	close $student_pref_file_in;
 
-	print $ppref_out "\#Professor Preference Final\nProfessor_id\tStudent_ids\n";
+	print $ppref_out "\#Professor Preference Final\n\#Professor_id\tStudent_ids\n";
 	foreach my $prof_id (sort keys %ppref) {
 		print $ppref_out "$prof_id";
 		foreach my $student (sort @{$ppref{$prof_id}}) {
@@ -299,6 +300,7 @@ sub convertProfTSV {
 	my $data;
 	open (my $in, "<", "$fh") or die "Cannot read from $fh: $!\n";
 	while (my $line = <$in>) {
+		next if $line =~ /\#/;
 		$data .= $line;
 	}
 	close $in;
@@ -370,6 +372,7 @@ sub convertStudTSV {
 	my $data;
 	open (my $in, "<", "$fh") or die "Cannot read from $fh: $!\n";
 	while (my $line = <$in>) {
+		next if $line =~ /\#/;
 		$data .= $line;
 	}
 	close $in;
@@ -491,13 +494,14 @@ sub conflict_test {
 	#Now is the main function to score
 	#If there is conflicting schedule we minus 10%
 
-	# 1. Does each prof has more than 1 student?
+	# 1. Does each prof meet the same student more than once?
 	my %prof;
-	# 2. Does each student has more than 1 identical time schedule?
+	# 2. Does each student meet more than one professor at the same time?
 	my %student;
 	foreach my $prof (sort keys %{$schedule{data}}) {
 		foreach my $slot (sort keys %{$schedule{data}{$prof}}) {
 			my $student = $schedule{data}{$prof}{$slot};
+			next if $student eq "NA";
 			$prof{$prof}{$student}++;
 			$student{$student}{$slot}++;
 		}
@@ -506,15 +510,56 @@ sub conflict_test {
 	# Calculate score where each conflict is -10
 	foreach my $prof (keys %prof) {
 		foreach my $student (keys %{$prof{$prof}}) {
-			$score -= 0.5*$global_score*($prof{$prof}{$student}-1);
+			$score -= 50*$global_score*($prof{$prof}{$student}-1);
 		}
 	}
 	foreach my $student (keys %student) {
 		foreach my $slot (keys %{$student{$student}}) {
-			$score -= 0.5*$global_score*($student{$student}{$slot}-1);
+			$score -= 50*$global_score*($student{$student}{$slot}-1);
 		}
 	}
+
 	return($score);
+}
+
+sub conflict_resolve {
+	my ($schedule, $p_sched, $generation) = @_;
+	my %schedule = %{$schedule};
+	my %p_sched = %{$p_sched};
+	#Open by each genome
+	#Now is the main function to score
+	#If there is conflicting schedule we minus 10%
+
+	# 1. Does each prof meet the same student more than once?
+	# 2. Does each student meet more than one professor at the same time?
+	my %student;
+	my %newSchedule = %schedule;
+	foreach my $number (keys %schedule) {
+		my %prof;
+		foreach my $prof (sort keys %{$schedule{$number}{data}}) {
+			foreach my $slot (sort keys %{$schedule{$number}{data}{$prof}}) {
+				my $student = $schedule{$number}{data}{$prof}{$slot};
+				if ($student ne "NA" and $p_sched{$prof}{$slot} == 0) {
+					$newSchedule{$number}{data}{$prof}{$slot} = "NA";
+				}
+			}
+		}
+		#if (defined($generation) and $generation eq "last") {
+			foreach my $prof (sort keys %{$schedule{$number}{data}}) {
+				foreach my $slot (sort keys %{$schedule{$number}{data}{$prof}}) {
+					my $student = $schedule{$number}{data}{$prof}{$slot};
+					next if $student eq "NA";
+					$prof{$prof}{$student}++;
+					$student{$student}{$slot}++;
+					if ($prof{$prof}{$student} > 1) {# or $student{$student}{$slot} > 1) {
+						$newSchedule{$number}{data}{$prof}{$slot} = "NA";
+					}
+				}
+			}
+		#}
+	}
+
+	return(\%newSchedule);
 }
 
 =head2 Function prof_schedule_score
@@ -625,8 +670,9 @@ sub stud_preference_score {
 			my $student = $schedule{data}{$prof}{$slot};
 			# If prof exists in student pref then plus prof_score/10 * 2%
 			if (defined($s_pref{$student}{$prof})) {
+				my $total_prof = (keys %{$s_pref{$student}});
 				my $prof_score = $s_pref{$student}{$prof};
-				$score +=  0.5*$prof_score*0.02*$global_score;
+				$score +=  5*$prof_score/$total_prof*10*$global_score;
 			}
 			
 		}
@@ -710,6 +756,9 @@ sub get_distance_score {
 	}
 	return($score);
 }
+
+
+
 1;
 
 
